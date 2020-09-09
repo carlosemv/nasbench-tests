@@ -10,6 +10,7 @@ from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.experimental import CosineDecay
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.utils import to_categorical
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -20,9 +21,13 @@ if __name__=='__main__':
 
     epochs = args.epochs
     verbose = args.verbose
+    val_split = 0.2
+    num_classes = 10
 
     best = np.load('best_file.npy', allow_pickle=True).item()
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    y_train = to_categorical(y_train, num_classes)
+    y_test = to_categorical(y_test, num_classes)
 
     best_enc = best[epochs][0]
     model_config = config.build_config()
@@ -32,13 +37,14 @@ if __name__=='__main__':
 
     print(model_config)
 
-    batch_size = model_config['batch_size']
+    batch_size = 250
+
     inputs = tf.keras.layers.Input(x_train.shape[1:], batch_size)
     net_outputs = build_keras_model(model_spec, inputs,
         model_spec.ops, model_config)
     model = tf.keras.Model(inputs=inputs, outputs=net_outputs)
 
-    num_train_imgs = int(x_train.shape[0]*0.8)
+    num_train_imgs = int(x_train.shape[0]*(1-val_split))
     decay_steps = int(epochs * num_train_imgs / batch_size)
     cos_decay = CosineDecay(model_config['learning_rate'], decay_steps)
 
@@ -47,7 +53,10 @@ if __name__=='__main__':
         optimizer=RMSprop(cos_decay),
         metrics=['accuracy'])
     model.summary()
-    print(len(model.layers))
+    print(len(model.layers), "layers")
+    print("batch_size:", batch_size)
+    print(model_config['data_format'])
+    print(x_train.shape)
 
     # Prepare model model saving directory.
     save_dir = os.path.join(os.getcwd(), 'saved_models')
@@ -60,7 +69,7 @@ if __name__=='__main__':
     # Prepare callbacks for model saving and for learning rate adjustment.
     checkpoint = ModelCheckpoint(
         filepath=filepath,
-        monitor='val_acc',
+        monitor='val_accuracy',
         verbose=1,
         save_best_only=True)
 
@@ -93,7 +102,7 @@ if __name__=='__main__':
         # randomly flip images
         vertical_flip=False,
         # validation split
-        validation_split=0.2)
+        validation_split=val_split)
 
     # Compute quantities required for featurewise normalization
     # (std, mean, and principal components if ZCA whitening is applied).
@@ -113,6 +122,7 @@ if __name__=='__main__':
     print("done training in {}s".format(time.time()-t0))
 
     # Score trained model.
-    scores = model.evaluate(x_test, y_test, verbose=verbose)
+    scores = model.evaluate(x_test, y_test,
+        verbose=verbose, batch_size=batch_size)
     print('Test loss:', scores[0])
     print('Test accuracy:', scores[1])
