@@ -15,7 +15,7 @@ if __name__=='__main__':
     val_split = 0.2
     num_classes = 10
 
-    batch_size = 256
+    batch_size = 250
 
     matrix = [[0, 1, 0, 1, 1, 1],
         [0, 0, 1, 1, 0, 0],
@@ -38,7 +38,7 @@ if __name__=='__main__':
         'momentum': 0.9, 'weight_decay': 0.0001, 'max_attempts': 5,
         'intermediate_evaluations': ['0.5'], 'num_repeats': 3}
 
-    model_spec = ModelSpec(matrix=best, ops=ops,
+    model_spec = ModelSpec(matrix=matrix, ops=ops,
         data_format=config['data_format'])
 
     # load data
@@ -49,7 +49,7 @@ if __name__=='__main__':
     # build model
     inputs = tf.keras.layers.Input(x_train.shape[1:], batch_size)
     net_outputs = build_keras_model(model_spec, inputs,
-        ops, model_config)
+        ops, config)
     model = tf.keras.Model(inputs=inputs, outputs=net_outputs)
 
     num_train_imgs = int(x_train.shape[0] * (1-val_split))
