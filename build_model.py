@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.experimental import CosineDecay
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical, plot_model
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -35,9 +35,10 @@ if __name__=='__main__':
         ops=best_enc['module_operations'],
         data_format=model_config['data_format'])
 
-    print(model_config)
-
     batch_size = 250
+    # model_config['num_stacks'] = 0
+
+    print(model_config)
 
     inputs = tf.keras.layers.Input(x_train.shape[1:], batch_size)
     net_outputs = build_keras_model(model_spec, inputs,
@@ -52,77 +53,80 @@ if __name__=='__main__':
         loss='categorical_crossentropy',
         optimizer=RMSprop(cos_decay),
         metrics=['accuracy'])
-    model.summary()
-    print(len(model.layers), "layers")
-    print("batch_size:", batch_size)
-    print(model_config['data_format'])
-    print(x_train.shape)
+    plot_model(model, to_file='model_nas_plot.png',
+        show_shapes=True, show_layer_names=True)
 
-    # Prepare model model saving directory.
-    save_dir = os.path.join(os.getcwd(), 'saved_models')
-    os.makedirs(save_dir, exist_ok=True)
-    model_type = "{}epochs".format(epochs)
-    model_name = 'cifar10_{0}_model.{{epoch:03d}}.h5'.format(model_type)
+    # model.summary()
+    # print(len(model.layers), "layers")
+    # print("batch_size:", batch_size)
+    # print(model_config['data_format'])
+    # print(x_train.shape)
 
-    filepath = os.path.join(save_dir, model_name)
+    # # Prepare model model saving directory.
+    # save_dir = os.path.join(os.getcwd(), 'saved_models')
+    # os.makedirs(save_dir, exist_ok=True)
+    # model_type = "{}epochs".format(epochs)
+    # model_name = 'cifar10_{0}_model.{{epoch:03d}}.h5'.format(model_type)
 
-    # Prepare callbacks for model saving and for learning rate adjustment.
-    checkpoint = ModelCheckpoint(
-        filepath=filepath,
-        monitor='val_accuracy',
-        verbose=1,
-        save_best_only=True)
+    # filepath = os.path.join(save_dir, model_name)
 
-    logger = CSVLogger(f'cifar10_{model_type}.csv')
+    # # Prepare callbacks for model saving and for learning rate adjustment.
+    # checkpoint = ModelCheckpoint(
+    #     filepath=filepath,
+    #     monitor='val_accuracy',
+    #     verbose=1,
+    #     save_best_only=True)
 
-    # callbacks = [checkpoint, lr_reducer, lr_scheduler, logger]
-    callbacks = [checkpoint, logger]
+    # logger = CSVLogger(f'cifar10_{model_type}.csv')
 
-    print('Using real-time data augmentation.')
-    # This will do preprocessing and realtime data augmentation:
-    datagen = ImageDataGenerator(
-        # set input mean to 0 over the dataset
-        featurewise_center=False,
-        # set each sample mean to 0
-        samplewise_center=False,
-        # divide inputs by std of dataset
-        featurewise_std_normalization=False,
-        # divide each input by its std
-        samplewise_std_normalization=False,
-        # apply ZCA whitening
-        zca_whitening=False,
-        # randomly rotate images in the range (deg 0 to 180)
-        rotation_range=0,
-        # randomly shift images horizontally
-        width_shift_range=0.1,
-        # randomly shift images vertically
-        height_shift_range=0.1,
-        # randomly flip images
-        horizontal_flip=True,
-        # randomly flip images
-        vertical_flip=False,
-        # validation split
-        validation_split=val_split)
+    # # callbacks = [checkpoint, lr_reducer, lr_scheduler, logger]
+    # callbacks = [checkpoint, logger]
 
-    # Compute quantities required for featurewise normalization
-    # (std, mean, and principal components if ZCA whitening is applied).
-    datagen.fit(x_train)
+    # print('Using real-time data augmentation.')
+    # # This will do preprocessing and realtime data augmentation:
+    # datagen = ImageDataGenerator(
+    #     # set input mean to 0 over the dataset
+    #     featurewise_center=False,
+    #     # set each sample mean to 0
+    #     samplewise_center=False,
+    #     # divide inputs by std of dataset
+    #     featurewise_std_normalization=False,
+    #     # divide each input by its std
+    #     samplewise_std_normalization=False,
+    #     # apply ZCA whitening
+    #     zca_whitening=False,
+    #     # randomly rotate images in the range (deg 0 to 180)
+    #     rotation_range=0,
+    #     # randomly shift images horizontally
+    #     width_shift_range=0.1,
+    #     # randomly shift images vertically
+    #     height_shift_range=0.1,
+    #     # randomly flip images
+    #     horizontal_flip=True,
+    #     # randomly flip images
+    #     vertical_flip=False,
+    #     # validation split
+    #     validation_split=val_split)
 
-    t0 = time.time()
+    # # Compute quantities required for featurewise normalization
+    # # (std, mean, and principal components if ZCA whitening is applied).
+    # datagen.fit(x_train)
 
-    # Fit the model on the batches generated by datagen.flow().
-    model.fit(
-        datagen.flow(x_train, y_train,
-            batch_size=batch_size, subset='training'),
-        validation_data=datagen.flow(x_train, y_train,
-            batch_size=batch_size, subset='validation'),
-        epochs=epochs, verbose=verbose,
-        workers=4, callbacks=callbacks)
+    # t0 = time.time()
 
-    print("done training in {}s".format(time.time()-t0))
+    # # Fit the model on the batches generated by datagen.flow().
+    # model.fit(
+    #     datagen.flow(x_train, y_train,
+    #         batch_size=batch_size, subset='training'),
+    #     validation_data=datagen.flow(x_train, y_train,
+    #         batch_size=batch_size, subset='validation'),
+    #     epochs=epochs, verbose=verbose,
+    #     workers=4, callbacks=callbacks)
 
-    # Score trained model.
-    scores = model.evaluate(x_test, y_test,
-        verbose=verbose, batch_size=batch_size)
-    print('Test loss:', scores[0])
-    print('Test accuracy:', scores[1])
+    # print("done training in {}s".format(time.time()-t0))
+
+    # # Score trained model.
+    # scores = model.evaluate(x_test, y_test,
+    #     verbose=verbose, batch_size=batch_size)
+    # print('Test loss:', scores[0])
+    # print('Test accuracy:', scores[1])
